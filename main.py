@@ -182,6 +182,22 @@ def print_solution(
         f"  {'TOTAL':12s} | {total_shipments:10d} | {total_shipments:10d} | {100.0:10.2f}%\n"
     )
 
+    # Print warehouse distribution
+    print("WAREHOUSE DISTRIBUTION:")
+    print("-" * 80)
+    print(f"  {'Warehouse':12s} | {'Shipments':>10s} | {'% of Total':>11s}")
+    print("  " + "-" * 76)
+
+    for i in warehouses:
+        warehouse_total = sum(shipment_counts.get((i, j), 0) for j in destinations)
+        pct_of_total = (
+            (warehouse_total / total_shipments) * 100 if total_shipments > 0 else 0
+        )
+        print(f"  {i:12s} | {warehouse_total:10d} | {pct_of_total:10.2f}%")
+
+    print("  " + "-" * 76)
+    print(f"  {'TOTAL':12s} | {total_shipments:10d} | {100.0:10.2f}%\n")
+
     # Print delivery time statistics
     print("DELIVERY TIME STATISTICS:")
     print("-" * 80)

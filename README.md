@@ -5,11 +5,11 @@ A Python-based linear programming tool that optimizes warehouse shipment routing
 ## Features
 
 - **Cost Optimization**: Minimizes total shipping costs including fixed warehouse costs and per-shipment costs
-- **Distribution Targets**: Ensures shipments meet target distribution percentages across destinations (with configurable tolerance)
+- **Distribution Targets**: Ensures shipments meet exact target quantities for each destination
 - **Delivery Constraints**: Respects delivery time targets with configurable tolerance for late shipments
 - **Capacity Management**: Handles warehouse-to-destination capacity limits
 - **Interactive CLI**: User-friendly command-line interface for inputting parameters
-- **Detailed Output**: Comprehensive solution summary with cost breakdowns, routing tables, and delivery statistics
+- **Detailed Output**: Comprehensive solution summary with cost breakdowns, routing tables, distribution statistics, and delivery analytics
 
 ## Requirements
 
@@ -63,26 +63,22 @@ The program will prompt you to enter:
 
 1. **Warehouses**: Comma-separated list of warehouse names
 2. **Destinations**: Comma-separated list of destination names
-3. **Total Shipments**: Total number of shipments to distribute
-4. **Target Distribution**: Desired percentage of shipments to each destination (must sum to 1.0)
-5. **Distribution Tolerance**: Allowable deviation from target distribution (0.0-1.0)
-6. **Warehouse Fixed Costs**: Fixed cost for using each warehouse
-7. **Shipment Capacity**: Maximum shipments from each warehouse to each destination
-8. **Shipment Costs**: Cost per shipment for each warehouse-destination pair
-9. **Target Delivery Days**: Maximum acceptable delivery time
-10. **Delivery Tolerance**: Fraction of shipments allowed to miss delivery target (0.0-1.0)
-11. **Delivery Estimates**: Expected delivery days for each warehouse-destination pair
+3. **Target Distribution**: Exact number of shipments required for each destination
+4. **Warehouse Fixed Costs**: Fixed cost for using each warehouse
+5. **Shipment Capacity**: Maximum shipments from each warehouse to each destination
+6. **Shipment Costs**: Cost per shipment for each warehouse-destination pair
+7. **Target Delivery Days**: Maximum acceptable delivery time
+8. **Delivery Tolerance**: Fraction of shipments allowed to miss delivery target (0.0-1.0)
+9. **Delivery Estimates**: Expected delivery days for each warehouse-destination pair
 
 ### Example Input
 
 ```
 Warehouses: a,b
 Destinations: x,y,z
-Total shipments: 1000
-Target distribution for 'x': 0.4
-Target distribution for 'y': 0.3
-Target distribution for 'z': 0.3
-Distribution tolerance: 0.05
+Shipment count for destination 'x': 400
+Shipment count for destination 'y': 300
+Shipment count for destination 'z': 300
 Fixed cost for warehouse 'a': $500
 Fixed cost for warehouse 'b': $300
 ...
@@ -94,8 +90,9 @@ The program provides a detailed optimization report including:
 
 - **Warehouse Usage**: Which warehouses are active and their fixed costs
 - **Shipment Routing**: Complete routing table with shipment counts and costs
-- **Destination Distribution**: Actual vs. target distribution percentages
-- **Delivery Statistics**: Average delivery times, on-time rates, and late shipment statistics
+- **Destination Distribution**: Actual vs. target shipment counts with percentage breakdowns
+- **Warehouse Distribution**: Total shipments from each warehouse with percentage breakdowns
+- **Delivery Statistics**: Average delivery times, on-time rates, and late shipment statistics by destination and overall
 
 ## Problem Formulation
 
@@ -103,10 +100,10 @@ The optimizer solves a mixed-integer linear programming problem that:
 
 - **Minimizes**: Total cost (fixed warehouse costs + variable shipment costs)
 - **Subject to**: 
-  - Total shipment constraint
-  - Capacity constraints
-  - Distribution target constraints (with tolerance)
-  - Delivery time constraints (with tolerance)
+  - Exact shipment count requirements for each destination
+  - Capacity constraints for each warehouse-destination pair
+  - Warehouse usage binary constraints
+  - Delivery time constraints (with tolerance for late shipments)
 
 See `equations.txt` for the complete mathematical formulation.
 

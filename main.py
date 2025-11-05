@@ -5,9 +5,7 @@ import pulp
 def optimize_shipments(
     warehouses: list[str],
     destinations: list[str],
-    total_shipments: int,
-    target_distribution: Dict[str, float],
-    distribution_tolerance: float,
+    target_distribution: Dict[str, int],
     shipment_capacity: Dict[str, Dict[str, int]],
     warehouse_cost: Dict[str, float],
     shipment_cost: Dict[str, Dict[str, float]],
@@ -32,15 +30,6 @@ def optimize_shipments(
     # warehouse_usage[i] = binary variable indicating if warehouse i is used
     warehouse_usage = pulp.LpVariable.dicts("warehouse_usage", warehouses, cat="Binary")
 
-    # DEPENDENT VARIABLES
-    distribution_slack = pulp.LpVariable.dicts(
-        "distribution_slack",
-        destinations,
-        lowBound=-distribution_tolerance,
-        upBound=distribution_tolerance,
-        cat="Continuous",
-    )
-
     # CALCULATED PARAMETERS
     delivery_target_failure = {
         (i, j): 1 if delivery_estimate[i][j] > target_delivery_days else 0
@@ -59,13 +48,6 @@ def optimize_shipments(
     problem += total_cost, "Total_Cost"
 
     # CONSTRAINTS
-    # Total shipments constraint
-    problem += (
-        pulp.lpSum([shipment_count[(i, j)] for i in warehouses for j in destinations])
-        == total_shipments,
-        "Total_Shipments",
-    )
-
     # Warehouse usage constraints
     for i in warehouses:
         for j in destinations:
@@ -78,7 +60,7 @@ def optimize_shipments(
     for j in destinations:
         problem += (
             pulp.lpSum([shipment_count[(i, j)] for i in warehouses])
-            == total_shipments * (target_distribution[j] + distribution_slack[j]),
+            == target_distribution[j],
             f"Distribution_{j}",
         )
 
@@ -105,8 +87,7 @@ def print_solution(
     problem: pulp.LpProblem,
     warehouses: list[str],
     destinations: list[str],
-    total_shipments: int,
-    target_distribution: Dict[str, float],
+    target_distribution: Dict[str, int],
     warehouse_cost: Dict[str, float],
     shipment_cost: Dict[str, Dict[str, float]],
     target_delivery_days: int,
@@ -139,6 +120,9 @@ def print_solution(
         elif v.name.startswith("warehouse_usage_"):
             i = v.name.replace("warehouse_usage_", "")
             warehouse_usage[i] = int(v.varValue)
+
+    # Calculate total shipments across all destination targets
+    total_shipments = sum(target_distribution.values())
 
     # Print warehouse usage and costs
     print("WAREHOUSE USAGE:")
@@ -179,21 +163,24 @@ def print_solution(
     print("DESTINATION DISTRIBUTION:")
     print("-" * 80)
     print(
-        f"  {'Destination':12s} | {'Shipments':>10s} | {'Actual %':>9s} | {'Target %':>9s} | {'Deviation':>10s}"
+        f"  {'Destination':12s} | {'Actual':>10s} | {'Target':>10s} | {'% of Total':>11s}"
     )
     print("  " + "-" * 76)
 
     for j in destinations:
-        dest_total = sum(shipment_counts.get((i, j), 0) for i in warehouses)
-        actual_pct = (dest_total / total_shipments) * 100 if total_shipments > 0 else 0
-        target_pct = target_distribution.get(j, 0) * 100
-        deviation = actual_pct - target_pct
+        dest_actual = sum(shipment_counts.get((i, j), 0) for i in warehouses)
+        dest_target = target_distribution.get(j, 0)
+        pct_of_total = (
+            (dest_actual / total_shipments) * 100 if total_shipments > 0 else 0
+        )
         print(
-            f"  {j:12s} | {dest_total:10d} | {actual_pct:8.2f}% | {target_pct:8.2f}% | {deviation:+9.2f}%"
+            f"  {j:12s} | {dest_actual:10d} | {dest_target:10d} | {pct_of_total:10.2f}%"
         )
 
     print("  " + "-" * 76)
-    print(f"  {'TOTAL':12s} | {total_shipments:10d} | {100.0:8.2f}% |\n")
+    print(
+        f"  {'TOTAL':12s} | {total_shipments:10d} | {total_shipments:10d} | {100.0:10.2f}%\n"
+    )
 
     # Print delivery time statistics
     print("DELIVERY TIME STATISTICS:")
@@ -285,48 +272,20 @@ def get_user_input() -> dict:
     destinations = [d.strip() for d in destination_input.split(",")]
     print(f"  Destinations: {destinations}\n")
 
-    # Get total shipments
-    print("TOTAL SHIPMENTS:")
-    total_shipments = int(input("Enter total number of shipments: ").strip())
-    print(f"  Total shipments: {total_shipments}\n")
-
     # Get target distribution
     print("TARGET DISTRIBUTION:")
-    print("  (Must sum to 1.0)")
     target_distribution = {}
     for j in destinations:
         while True:
             try:
-                val = float(input(f"  Target distribution for '{j}': ").strip())
-                if 0 <= val <= 1:
+                val = int(input(f"  Shipment count for destination '{j}': ").strip())
+                if 0 <= val:
                     target_distribution[j] = val
                     break
                 else:
-                    print("    Error: Value must be between 0 and 1")
+                    print("    Error: Value must be non-negative")
             except ValueError:
                 print("    Error: Please enter a valid number")
-
-    dist_sum = sum(target_distribution.values())
-    print(f"  Sum of distributions: {dist_sum:.4f}")
-    if abs(dist_sum - 1.0) > 0.001:
-        print("  WARNING: Distribution sum is not 1.0!\n")
-    else:
-        print()
-
-    # Get distribution tolerance
-    print("DISTRIBUTION TOLERANCE:")
-    while True:
-        try:
-            distribution_tolerance = float(
-                input("Enter distribution tolerance (0.0-1.0): ").strip()
-            )
-            if 0 <= distribution_tolerance <= 1:
-                break
-            else:
-                print("  Error: Value must be between 0 and 1")
-        except ValueError:
-            print("  Error: Please enter a valid number")
-    print(f"  Distribution tolerance: {distribution_tolerance}\n")
 
     # Get warehouse costs
     print("WAREHOUSE FIXED COSTS:")
@@ -447,9 +406,7 @@ def get_user_input() -> dict:
     return {
         "warehouses": warehouses,
         "destinations": destinations,
-        "total_shipments": total_shipments,
         "target_distribution": target_distribution,
-        "distribution_tolerance": distribution_tolerance,
         "shipment_capacity": shipment_capacity,
         "warehouse_cost": warehouse_cost,
         "shipment_cost": shipment_cost,
@@ -469,7 +426,6 @@ def main():
         problem,
         params["warehouses"],
         params["destinations"],
-        params["total_shipments"],
         params["target_distribution"],
         params["warehouse_cost"],
         params["shipment_cost"],

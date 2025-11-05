@@ -4,23 +4,12 @@ let warehouses be the set of possible warehouse shipment origins
 let destinations be the set of possible destinations for shipments
   destinations = ["a", "b", "c"]
 
-let total_shipments be the integer sum of the number of shipments from all warehouses to all destinations
-  total_shipments is an int > 0
-
 let shipment_count be a matrix of the number of shipments from a warehouse i to destination j
   shipment_counts[i][j] is an integer >= 0, i in warehouses, j in destinations
   total_shipments = sum(shipment_counts[i][j]) for all i in warehouses, j in destinations
 
-let target_distribution be a map of destinations to their target distribution fraction of total_shipments
-  target_distribution[j] is a 0.0 <= float <= 1.0, j in destinations
-
-let distribution_tolerance be the decimal elasticity of the a given target_distribution[j]
-  distribution_tolerance is a 0.0 <= float <= 1.0
-
-let distribution_slack be a map of destinations to variables for the absolute difference from the targeted distribution of shipments to the given destination
-  distribution_slack[j] = target_distribution[j] - sum(shipment_counts[i][j]) / total_shipments
-    for each j in destinations and summed across all i in warehouses
-  |distribution_slack[j]| <= distribution_tolerance
+let target_distribution be a map of destinations to the integer number of shipments expected to go there
+  target_distribution[j] is an int >= 0 for all j in destinations
 
 let shipment_capacity be a matrix of the capactity to ship from warehouse i to destination j
   shipment_capacity[i][j] is an int >= 0
@@ -53,8 +42,7 @@ let total_cost be the sum of all costs for a given shipment_count matrix
 FIXED PARAMETERS:
 warehouses, str[]
 destinations, str[]
-total_shipments, int
-target_distribution, [str] = float
+target_distribution, [str] = int
 distribution_tolerance, float
 shipment_capacity, [str][str] = int
 warehouse_cost, [str] = float
@@ -71,7 +59,6 @@ shipment_count, [str][str] = int, matrix of integer decision variables
 warehouse_usage, [str] = 0 or 1, map of binary decision variables
 
 DEPENDENT VARIABLES
-distribution_slack, [str] = float, map of dependent float variables
 total_cost, float, objective variable
 
 OBJECTIVE:
@@ -85,14 +72,9 @@ warehouse_usage[j] = 0 or 1
 shipment_count[i][j] <= shipment_capacity[i][j] * warehouse_usage[j] for all i and j
 
 SHIPMENT COUNT CONSTRAINTS:
-sum(shipment_count[i][j]) = total_shipments across all i and j
+sum(shipment_count[i][j]) = target_distribution[j] for a fixed j across all i
 shipment_count[i][j] >= 0 for all i and j
 shipment_count[i][j] <= shipment_capacity[i][j] for all i and j
-
-SHIPMENT DISTRIBUTION CONSTRAINTS:
-sum(shipment_count[i][j]) / total_shipments = target_distribution[j] + distribution_slack[j] for a fixed j across all i
-distribution_slack[j] >= -(destination_tolerance) for all j
-distribution_slack[j] <= destination_tolerance for all j
 
 DELIVERY TARGET CONSTRAINTS:
 delivery_target_failure[i][j] = 0 or 1 for all i and j

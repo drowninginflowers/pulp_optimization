@@ -365,35 +365,146 @@ def print_solution(
 
 def get_user_input() -> dict:
     """
-    Prompt user via CLI to input all fixed parameters for the optimization problem.
-    Returns a dictionary containing all the parameters.
+    Prompt user via CLI to input all fixed parameters for the carrier earned discount optimization problem.
+    Automatically includes Tier 0 (min_quantity = 0, discount = 1.0).
     """
-    base_shipments = 40000
-    num_years = 2
-    carriers = ["UPS", "FedEx"]
-    destinations = ["A", "B", "C"]
-    distribution_target = {"A": 0.5, "B": 0.35, "C": 0.15}
-    shipment_target = [
-        {
-            dest: int((base_shipments * 1.3**i) * distribution_target[dest])
-            for dest in destinations
-        }
-        for i in range(num_years)
-    ]
+    print("=" * 80)
+    print("CARRIER EARNED DISCOUNT OPTIMIZATION - INPUT PARAMETERS")
+    print("=" * 80)
+    print()
+
+    # Number of years
+    while True:
+        try:
+            num_years = int(
+                input("Enter number of years to optimize (e.g., 2): ").strip()
+            )
+            if num_years > 0:
+                break
+            else:
+                print("  Error: Must be a positive integer.")
+        except ValueError:
+            print("  Error: Please enter a valid integer.")
+    print(f"  Number of years: {num_years}\n")
+
+    # Get carriers
+    print("CARRIERS:")
+    carrier_input = input(
+        "Enter carrier names (comma-separated, e.g., 'UPS,FedEx'): "
+    ).strip()
+    carriers = [c.strip() for c in carrier_input.split(",") if c.strip()]
+    print(f"  Carriers: {carriers}\n")
+
+    # Get destinations
+    print("DESTINATIONS:")
+    destination_input = input(
+        "Enter destination names (comma-separated, e.g., 'A,B,C'): "
+    ).strip()
+    destinations = [d.strip() for d in destination_input.split(",") if d.strip()]
+    print(f"  Destinations: {destinations}\n")
+
+    # Shipment targets per year per destination
+    print("SHIPMENT TARGETS:")
+    shipment_target = []
+    for year in range(num_years):
+        print(f"  Year {year}:")
+        yearly_targets = {}
+        for dest in destinations:
+            while True:
+                try:
+                    val = int(
+                        input(
+                            f"    Target shipments for destination '{dest}': "
+                        ).strip()
+                    )
+                    if val >= 0:
+                        yearly_targets[dest] = val
+                        break
+                    else:
+                        print("      Error: Value must be non-negative.")
+                except ValueError:
+                    print("      Error: Please enter a valid integer.")
+        shipment_target.append(yearly_targets)
+        print()
+
+    # Shipment cost per carrier per destination
+    print("SHIPMENT COSTS:")
+    shipment_cost = {}
+    for carrier in carriers:
+        shipment_cost[carrier] = {}
+        print(f"  {carrier}:")
+        for dest in destinations:
+            while True:
+                try:
+                    val = float(input(f"    Cost per shipment to '{dest}': $").strip())
+                    if val >= 0:
+                        shipment_cost[carrier][dest] = val
+                        break
+                    else:
+                        print("      Error: Cost must be non-negative.")
+                except ValueError:
+                    print("      Error: Please enter a valid number.")
+        print()
+
+    # Tier minimum quantities (always includes Tier 0 = 0)
+    print("TIER MINIMUM QUANTITIES:")
+    print("  Note: Tier 0 (0 shipments) will be automatically added.")
+    while True:
+        tier_input = input(
+            "Enter additional tier minimum quantities (comma-separated, e.g., '5000,50000,100000'): "
+        ).strip()
+        try:
+            user_tiers = [int(x) for x in tier_input.split(",") if x.strip()]
+            if all(x > 0 for x in user_tiers):
+                tier_min_quantity = [0] + user_tiers
+                break
+            else:
+                print(
+                    "  Error: Tier minimums (other than 0) must be positive integers."
+                )
+        except ValueError:
+            print("  Error: Please enter valid integers.")
+    print(f"  Tier minimum quantities (including Tier 0): {tier_min_quantity}\n")
+
+    # Discount rates per carrier per tier (automatically adds Tier 0 = 1.0)
+    print("DISCOUNT RATES:")
+    discount_rate = {}
+    for carrier in carriers:
+        print(f"  {carrier}:")
+        while True:
+            try:
+                discount_input = input(
+                    "    Enter discount multipliers for tiers (excluding Tier 0), "
+                    "comma-separated, e.g., '0.97,0.95,0.93': "
+                ).strip()
+                user_rates = [float(x) for x in discount_input.split(",") if x.strip()]
+                if len(user_rates) == len(tier_min_quantity) - 1 and all(
+                    r > 0 for r in user_rates
+                ):
+                    discount_rate[carrier] = [1.0] + user_rates
+                    break
+                else:
+                    print(
+                        f"      Error: Provide {len(tier_min_quantity) - 1} positive multipliers "
+                        f"(one per non-zero tier). Tier 0 (1.0) is added automatically."
+                    )
+            except ValueError:
+                print("      Error: Please enter valid numbers.")
+        print()
+
+    print("=" * 80)
+    print("INPUT COMPLETE")
+    print("=" * 80)
+    print()
+
     return {
         "num_years": num_years,
         "carriers": carriers,
         "destinations": destinations,
         "shipment_target": shipment_target,
-        "shipment_cost": {
-            "UPS": {"A": 5.0, "B": 8.0, "C": 10.0},
-            "FedEx": {"A": 6.0, "B": 9.0, "C": 8.0},
-        },
-        "tier_min_quantity": [0, 5000, 50000, 100000],
-        "discount_rate": {
-            "UPS": [1.0, 0.97, 0.96, 0.95],
-            "FedEx": [1.0, 0.96, 0.94, 0.93],
-        },
+        "shipment_cost": shipment_cost,
+        "tier_min_quantity": tier_min_quantity,
+        "discount_rate": discount_rate,
     }
 
 

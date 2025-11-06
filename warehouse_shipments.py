@@ -56,7 +56,7 @@ def optimize_shipments(
                 f"Warehouse_Usage_{i}_{j}",
             )
 
-    # Distribution constraints with slack
+    # Distribution constraints
     for j in destinations:
         problem += (
             pulp.lpSum([shipment_count[(i, j)] for i in warehouses])

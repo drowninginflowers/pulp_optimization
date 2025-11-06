@@ -96,16 +96,78 @@ def print_solution(
     """
     Pretty print the solution of the shipment optimization problem.
     """
-    if problem.status != pulp.LpStatusOptimal:
-        print(f"Solution Status: {pulp.LpStatus[problem.status]}")
-        print("No optimal solution found.")
+    print("\n" + "=" * 80)
+    print("WAREHOUSE SHIPMENT OPTIMIZATION RESULTS")
+    print("=" * 80)
+
+    status_code = problem.status
+    status_name = pulp.LpStatus[status_code]
+    print(f"\nSolver Status: {status_name} (code: {status_code})")
+
+    # Handle different solver statuses
+    if status_code == pulp.LpStatusOptimal:
+        print(f"Optimal Total Cost: ${problem.objective.value():,.2f}\n")
+
+    elif status_code == pulp.LpStatusInfeasible:
+        print("\n⚠ PROBLEM IS INFEASIBLE ⚠")
+        print("\nThe constraints cannot be satisfied simultaneously.")
+        print("\nPossible reasons:")
+        print("  1. Destination shipment targets exceed total warehouse capacity.")
+        print("  2. Some individual warehouse–destination capacity is too small.")
+        print("  3. Delivery tolerance too strict relative to delivery estimates.")
+        print("  4. Conflicting constraints between capacities and targets.\n")
+
+        print("Diagnostic Information:")
+        print(f"  Total shipments required: {sum(target_distribution.values()):,}")
+        print(f"  Number of warehouses: {len(warehouses)}")
+        print(f"  Number of destinations: {len(destinations)}")
+        print(f"  Target delivery days: {target_delivery_days}")
+
+        print("\n  Warehouse capacities summary:")
+        for i in warehouses:
+            total_cap = sum(delivery_estimate[i][j] for j in destinations)
+            print(
+                f"    {i}: max total {sum(cap for cap in total_cap if cap)} (est. days sum)"
+            )
+
+        print("\n  Delivery tolerance may also affect feasibility if too low.")
+        print("\nSuggestions:")
+        print("  • Verify each destination's target can be met by available capacity.")
+        print("  • Increase delivery_tolerance or relax tight delivery constraints.")
+        print("  • Check for typos in input numbers (e.g., 0 where it shouldn’t be).")
+        print("  • Try a smaller number of destinations or simplify constraints.")
         return
 
+    elif status_code == pulp.LpStatusUnbounded:
+        print("\n⚠ PROBLEM IS UNBOUNDED ⚠")
+        print("\nThe objective function can be improved indefinitely.")
+        print("This usually means missing constraints, such as:")
+        print("  • Missing capacity limits or non-negative bounds.")
+        print("  • Incorrect cost signs (e.g., negative costs).")
+        print("  • A constraint typo that allows unlimited shipments.\n")
+        return
+
+    elif status_code == pulp.LpStatusNotSolved:
+        print("\n⚠ PROBLEM NOT SOLVED ⚠")
+        print("\nThe solver did not attempt to solve or did not complete.")
+        print("Possible reasons:")
+        print("  • Solver not installed or misconfigured.")
+        print("  • Problem too large for available memory or time.")
+        print("  • Timeout reached before solution found.\n")
+        return
+
+    elif status_code == -3:
+        print("\n⚠ SOLVER RETURNED UNDEFINED STATUS ⚠")
+        print("\nThe solver encountered an issue such as:")
+        print("  • Numerical instability or infeasibility.")
+        print("  • Model formulation issues or missing bounds.")
+        print("  • Internal solver error.\n")
+        return
+
+    # If optimal, proceed with detailed reporting
     print("=" * 80)
-    print("SHIPMENT OPTIMIZATION SOLUTION")
+    print("OPTIMAL SOLUTION DETAILS")
     print("=" * 80)
-    print(f"Status: {pulp.LpStatus[problem.status]}")
-    print(f"Total Cost: ${problem.objective.value():,.2f}\n")
 
     # Extract solution values
     shipment_counts = {}

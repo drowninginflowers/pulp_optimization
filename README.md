@@ -1,112 +1,145 @@
-# Warehouse Shipment Optimization
+# Warehouse & Carrier Optimization Toolkit
 
-A Python-based linear programming tool that optimizes warehouse shipment routing to minimize costs while meeting distribution targets and delivery time constraints.
+A Python-based linear programming toolkit for optimizing warehouse shipment routing and multi-year carrier earned discount strategies.
+
+This project now includes **two complementary optimization modules**:
+
+- **`warehouse_shipments.py`** – Optimizes warehouse-to-destination shipment routing to minimize total shipping costs while meeting delivery constraints.
+- **`carrier_earned_discount.py`** – Optimizes multi-year carrier shipment allocations to achieve earned discount tiers while satisfying shipment targets.
+
+Both scripts use the [PuLP](https://coin-or.github.io/pulp/) linear programming library and feature interactive CLI input, detailed solution reports, and robust feasibility diagnostics.
+
+---
 
 ## Features
 
-- **Cost Optimization**: Minimizes total shipping costs including fixed warehouse costs and per-shipment costs
-- **Distribution Targets**: Ensures shipments meet exact target quantities for each destination
-- **Delivery Constraints**: Respects delivery time targets with configurable tolerance for late shipments
-- **Capacity Management**: Handles warehouse-to-destination capacity limits
-- **Interactive CLI**: User-friendly command-line interface for inputting parameters
-- **Detailed Output**: Comprehensive solution summary with cost breakdowns, routing tables, distribution statistics, and delivery analytics
+### Warehouse Shipment Optimization (`warehouse_shipments.py`)
+- **Cost Minimization**: Reduces total shipping cost, including fixed warehouse overhead and per-shipment costs.
+- **Target Fulfillment**: Guarantees exact shipment quantities to each destination.
+- **Delivery Constraints**: Enforces maximum delivery days with configurable tolerance for late deliveries.
+- **Capacity Handling**: Respects per-route shipment capacity limits.
+- **Interactive CLI Input**: Collects all parameters directly from the user — no code editing required.
+- **Feasibility Diagnostics**: Identifies and explains infeasible, unbounded, or unsolved optimization scenarios.
+- **Detailed Report**: Provides breakdowns by warehouse, destination, and delivery statistics.
+
+---
+
+### Carrier Earned Discount Optimization (`carrier_earned_discount.py`)
+- **Multi-Year Planning**: Optimizes shipment allocation across multiple years.
+- **Tiered Discounts**: Models carrier-specific earned discount tiers based on shipment volume.
+- **Automatic Tier 0 Handling**: Tier 0 (minimum = 0, discount = 1.0) is automatically included for all carriers.
+- **Comprehensive Diagnostics**: Detects infeasibility, unbounded objectives, and solver issues with explanatory feedback.
+- **Interactive CLI Input**: Users specify carriers, destinations, targets, costs, tiers, and discounts through prompts.
+- **Detailed Report**: Displays active tiers, shipment allocation per carrier, destination summaries, and total cost analysis.
+
+---
 
 ## Requirements
 
-- Python 3.12 or higher
-- [uv](https://docs.astral.sh/uv/) package manager (recommended) or pip
+- **Python 3.12 or higher**
+- [**PuLP**](https://coin-or.github.io/pulp/)
+- [**uv**](https://docs.astral.sh/uv/) package manager (recommended) or pip
+
+---
 
 ## Installation
 
 ### Using uv (Recommended)
 
-1. Install uv if you haven't already:
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. Clone or download this repository
-
-3. Install dependencies:
-   ```bash
-   uv sync
-   ```
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync
+````
 
 ### Using pip
 
-1. Create a virtual environment:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install pulp
+```
 
-2. Install dependencies:
-   ```bash
-   pip install pulp
-   ```
+---
 
 ## Usage
 
-Run the program with:
+### 1. Warehouse Shipment Optimization
+
+Run interactively:
 
 ```bash
-uv run main.py
+uv run warehouse_shipments.py
+# or
+python warehouse_shipments.py
 ```
 
-Or if using pip:
+You will be prompted for:
+
+1. Warehouse names
+2. Destination names
+3. Shipment targets per destination
+4. Fixed warehouse costs
+5. Capacity per warehouse-destination pair
+6. Shipment cost per route
+7. Delivery day targets and tolerance
+8. Estimated delivery days per route
+
+If the solver detects infeasibility or unboundedness, detailed diagnostics and suggestions are displayed.
+
+---
+
+### 2. Carrier Earned Discount Optimization
+
+Run interactively:
 
 ```bash
-python main.py
+uv run carrier_earned_discount.py
+# or
+python carrier_earned_discount.py
 ```
 
-The program will prompt you to enter:
+You will be prompted for:
 
-1. **Warehouses**: Comma-separated list of warehouse names
-2. **Destinations**: Comma-separated list of destination names
-3. **Target Distribution**: Exact number of shipments required for each destination
-4. **Warehouse Fixed Costs**: Fixed cost for using each warehouse
-5. **Shipment Capacity**: Maximum shipments from each warehouse to each destination
-6. **Shipment Costs**: Cost per shipment for each warehouse-destination pair
-7. **Target Delivery Days**: Maximum acceptable delivery time
-8. **Delivery Tolerance**: Fraction of shipments allowed to miss delivery target (0.0-1.0)
-9. **Delivery Estimates**: Expected delivery days for each warehouse-destination pair
+1. Number of years to optimize
+2. Carrier names
+3. Destination names
+4. Annual shipment targets per destination
+5. Shipment cost per carrier-destination pair
+6. Minimum shipment quantities per discount tier *(Tier 0 = 0 is always included)*
+7. Discount multipliers for each carrier *(Tier 0 multiplier = 1.0 added automatically)*
 
-### Example Input
-
-```
-Warehouses: a,b
-Destinations: x,y,z
-Shipment count for destination 'x': 400
-Shipment count for destination 'y': 300
-Shipment count for destination 'z': 300
-Fixed cost for warehouse 'a': $500
-Fixed cost for warehouse 'b': $300
-...
-```
+---
 
 ## Output
 
-The program provides a detailed optimization report including:
+Both optimization models generate detailed terminal reports including:
 
-- **Warehouse Usage**: Which warehouses are active and their fixed costs
-- **Shipment Routing**: Complete routing table with shipment counts and costs
-- **Destination Distribution**: Actual vs. target shipment counts with percentage breakdowns
-- **Warehouse Distribution**: Total shipments from each warehouse with percentage breakdowns
-- **Delivery Statistics**: Average delivery times, on-time rates, and late shipment statistics by destination and overall
+* **Solver Status** (Optimal, Infeasible, Unbounded, etc.)
+* **Feasibility Diagnostics** with probable causes and suggestions
+* **Total Cost Breakdown**
+* **Shipment Routing and Allocation Tables**
+* **Destination and Warehouse Summaries**
+* **Performance Metrics** (delivery days, on-time %)
+* **Discount Tier Summaries** (for carrier optimization)
+
+---
 
 ## Problem Formulation
 
-The optimizer solves a mixed-integer linear programming problem that:
+Each model solves a **mixed-integer linear programming (MILP)** problem using PuLP’s CBC solver:
 
-- **Minimizes**: Total cost (fixed warehouse costs + variable shipment costs)
-- **Subject to**: 
-  - Exact shipment count requirements for each destination
-  - Capacity constraints for each warehouse-destination pair
-  - Warehouse usage binary constraints
-  - Delivery time constraints (with tolerance for late shipments)
+* **Objective**: Minimize total cost
+* **Subject to**:
+
+  * Capacity constraints
+  * Delivery or tier requirements
+  * Exact shipment target fulfillment
+  * Binary warehouse/carrier activation constraints
 
 See `equations.txt` for the complete mathematical formulation.
 
+---
+
 ## License
 
-This project uses the PuLP library for linear programming optimization.
+This project uses the [PuLP](https://coin-or.github.io/pulp/) library for linear programming optimization.
